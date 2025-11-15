@@ -1,217 +1,224 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cartel TV Premium - En Renovación</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', sans-serif;
-        }
-        
-        body {
-            background: linear-gradient(135deg, #0c0c2e, #1a1a4a);
-            color: white;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 600px;
-            background: rgba(15, 15, 40, 0.9);
-            border-radius: 16px;
-            padding: 40px 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-        }
-        
-        .logo h1 {
-            font-size: 3rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-            background: linear-gradient(to right, #ffd166, #ff9e6b);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        
-        .logo span {
-            color: #a5a5ff;
-            font-size: 1.1rem;
-            display: block;
-            margin-bottom: 30px;
-        }
-        
-        .message h2 {
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            color: #ffd166;
-        }
-        
-        .message p {
-            font-size: 1.1rem;
-            line-height: 1.5;
-            margin-bottom: 15px;
-            color: #e0e0ff;
-        }
-        
-        .countdown {
-            background: rgba(30, 30, 70, 0.6);
-            border-radius: 12px;
-            padding: 25px 20px;
-            margin: 25px 0;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .date {
-            font-size: 1.3rem;
-            margin: 15px 0;
-            color: #a5a5ff;
-            font-weight: 600;
-        }
-        
-        .timer {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            margin-top: 20px;
-        }
-        
-        .time-unit {
-            background: rgba(20, 20, 50, 0.8);
-            border-radius: 10px;
-            padding: 15px 10px;
-            min-width: 70px;
-            border: 1px solid rgba(255, 209, 102, 0.2);
-        }
-        
-        .time-value {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #ffd166;
-        }
-        
-        .time-label {
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            margin-top: 5px;
-            color: #a5a5ff;
-        }
-        
-        .contact {
-            margin-top: 25px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .contact a {
-            color: #ffd166;
-            text-decoration: none;
-        }
-        
-        .contact a:hover {
-            text-decoration: underline;
-        }
-        
-        @media (max-width: 480px) {
-            .container {
-                padding: 30px 20px;
-            }
-            
-            .logo h1 {
-                font-size: 2.5rem;
-            }
-            
-            .message h2 {
-                font-size: 1.5rem;
-            }
-            
-            .timer {
-                gap: 8px;
-            }
-            
-            .time-unit {
-                min-width: 60px;
-                padding: 12px 8px;
-            }
-            
-            .time-value {
-                font-size: 1.7rem;
-            }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CTVP</title>
+  <meta name="description" content="Descubre películas y series organizadas por categorías" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="https://github.com/carteltvsoporte/cartel-tv-premium/raw/refs/heads/main/TV.jpeg" type="image/jpeg">
 </head>
 <body>
-    <div class="container">
-        <div class="logo">
-            <h1>Cartel TV</h1>
-            <span>PREMIUM</span>
-        </div>
-        
-        <div class="message">
-            <h2>Estamos en Renovación</h2>
-            <p>Estamos trabajando para ofrecerte una experiencia premium mejorada.</p>
-            <p>Volvemos el <strong>15 de Noviembre, 2025</strong></p>
-        </div>
-        
-        <div class="countdown">
-            <div class="date">Tiempo restante:</div>
-            <div class="timer">
-                <div class="time-unit">
-                    <div class="time-value" id="days">00</div>
-                    <div class="time-label">Días</div>
-                </div>
-                <div class="time-unit">
-                    <div class="time-value" id="hours">00</div>
-                    <div class="time-label">Horas</div>
-                </div>
-                <div class="time-unit">
-                    <div class="time-value" id="minutes">00</div>
-                    <div class="time-label">Minutos</div>
-                </div>
-                <div class="time-unit">
-                    <div class="time-value" id="seconds">00</div>
-                    <div class="time-label">Segundos</div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="contact">
-            <p>Consultas: <a href="mailto:carteltv.soporte@gmail.com">carteltv.soporte@gmail.com</a></p>
-        </div>
+  <div id="access-modal" class="modal">
+    <div class="modal-content">
+      <h2>Acceso Premium</h2>
+      <p>Ingrese la clave de acceso para continuar:</p>
+      <input type="password" id="access-code" placeholder="Clave de acceso" />
+      <button id="submit-code">Acceder</button>
+      <p id="error-message" class="error hidden">Clave incorrecta. Intente nuevamente.</p>
     </div>
+  </div>
 
-    <script>
-        const returnDate = new Date('November 15, 2025 00:00:00').getTime();
+  <div id="notification" class="notification hidden">
+    <span id="notification-text"></span>
+    <button id="notification-close" class="notification-close">×</button>
+  </div>
+
+  <div class="container">
+    <div id="main-app" class="main-app hidden">
+      
+      <header class="app-header">
+        <div class="header-content">
+          <div class="header-left">
+            <button id="menu-btn" class="menu-btn">
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
+            <div class="logo">
+              <img src="https://github.com/carteltvsoporte/cartel-tv-premium/raw/refs/heads/main/TV.jpeg" alt="Cartel TV" class="logo-img">
+              <span class="logo-text">CTVP</span>
+            </div>
+          </div>
+          
+          <div class="header-actions">
+            <button id="theme-toggle" class="theme-toggle">
+              <span class="theme-icon">💎</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <nav id="side-menu" class="side-menu">
+        <div class="menu-header">
+          <h3>Navegación</h3>
+          <button id="close-menu" class="close-menu">×</button>
+        </div>
+        <div class="menu-items">
+          <a href="#" class="menu-item active" data-section="discover">🔍 Descubrir</a>
+          <a href="#" class="menu-item" data-section="favorites">❤️ Favoritos</a>
+          <a href="#" class="menu-item" data-section="watchlist">📝 Por Ver</a>
+          <a href="#" class="menu-item" data-section="history">🕒 Historial</a>
+          <a href="#" class="menu-item" data-section="settings">⚙️ Configuración</a>
+        </div>
+        <div class="menu-footer">
+          <div class="user-stats">
+            <div class="stat">
+              <span class="stat-number" id="fav-count">0</span>
+              <span class="stat-label">Favoritos</span>
+            </div>
+            <div class="stat">
+              <span class="stat-number" id="watch-count">0</span>
+              <span class="stat-label">Por Ver</span>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div class="content-sections">
         
-        function updateCountdown() {
-            const now = new Date().getTime();
-            const timeLeft = returnDate - now;
+        <section id="discover" class="content-section active">
+          <div class="filters-container">
+            <div class="filters-header">
+              <h2>CATEGORIAS</h2>
+            </div>
             
-            const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+            <div class="categories">
+              <div class="category-section">
+                <h3 class="category-title">🎬 Películas</h3>
+                <div class="filters">
+                  <button class="filter-btn active" data-type="now_playing">En Cines</button>
+                  <button class="filter-btn" data-type="popular_movies">Populares</button>
+                  <button class="filter-btn" data-type="top_rated_movies">Mejor Valoradas</button>
+                  <button class="filter-btn" data-type="upcoming">Próximamente</button>
+                  <button class="filter-btn" data-type="action">Acción</button>
+                  <button class="filter-btn" data-type="comedy">Comedia</button>
+                  <button class="filter-btn" data-type="drama">Drama</button>
+                  <button class="filter-btn" data-type="documentary">Documental</button>
+                </div>
+              </div>
+
+              <div class="category-section">
+                <h3 class="category-title">📺 Series</h3>
+                <div class="filters">
+                  <button class="filter-btn" data-type="on_the_air">En Emisión</button>
+                  <button class="filter-btn" data-type="popular_tv">Populares</button>
+                  <button class="filter-btn" data-type="top_rated_tv">Mejor Valoradas</button>
+                  <button class="filter-btn" data-type="airing_today">Hoy en TV</button>
+                  <button class="filter-btn" data-type="tvmaze_shows">TVmaze Series</button>
+                  <button class="filter-btn" data-type="tvmaze_schedule">Programación TV</button>
+                </div>
+              </div>
+
+              <div class="category-section">
+                <h3 class="category-title">🚀 Próximas Novedades</h3>
+                <div class="filters">
+                  <button class="filter-btn" data-type="trending">Tendencia</button>
+                  <button class="filter-btn" data-type="upcoming_movies">Películas Próximas</button>
+                  <button class="filter-btn" data-type="upcoming_tv">Series Próximas</button>
+                  <button class="filter-btn" data-type="latest">Más Recientes</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button id="load-btn" class="action-btn">
+            <span class="btn-icon">🎬</span>
+            <span class="btn-text">Cargar Contenido</span>
+          </button>
+
+          <div id="loading" class="loading hidden">
+            <div class="loading-spinner"></div>
+            <span class="loading-message">Cargando contenido...</span>
+          </div>
+
+          <div id="movie-container" class="movie-card">
+            <div class="welcome-message">
+              <div class="welcome-icon">🎭</div>
+              <h3>Bienvenido a CTVP</h3>
+              <p>Selecciona una categoría y haz clic en "Cargar Contenido" para descubrir</p>
+            </div>
+          </div>
+
+          <div class="content-actions">
+            <button id="favorite-btn" class="content-action-btn favorite-btn">❤️ Favorito</button>
+            <button id="watchlist-btn" class="content-action-btn watchlist-btn">📝 Por Ver</button>
+          </div>
+        </section>
+
+        <section id="favorites" class="content-section">
+          <div class="section-header">
+            <h2>Mis Favoritos</h2>
+            <p>Tu colección personal de contenido destacado</p>
+          </div>
+          <div id="favorites-grid" class="content-grid"></div>
+        </section>
+
+        <section id="watchlist" class="content-section">
+          <div class="section-header">
+            <h2>Mi Lista por Ver</h2>
+            <p>Contenido guardado para ver más tarde</p>
+          </div>
+          <div id="watchlist-grid" class="content-grid"></div>
+        </section>
+
+        <section id="history" class="content-section">
+          <div class="section-header">
+            <h2>Historial</h2>
+            <p>Tu actividad reciente</p>
+          </div>
+          <div id="history-list" class="history-list"></div>
+        </section>
+
+        <section id="settings" class="content-section">
+          <div class="section-header">
+            <h2>Configuración</h2>
+            <p>Personaliza tu experiencia</p>
+          </div>
+          <div class="settings-grid">
+            <div class="setting-card">
+              <h3>🎨 Tema</h3>
+              <div class="setting-options">
+                <label class="setting-option">
+                  <input type="radio" name="theme" value="azul" checked>
+                  <span class="option-label">Azul Profesional</span>
+                </label>
+                <label class="setting-option">
+                  <input type="radio" name="theme" value="dorado">
+                  <span class="option-label">Dorado Premium</span>
+                </label>
+              </div>
+            </div>
             
-            document.getElementById('days').textContent = days.toString().padStart(2, '0');
-            document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
-            document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
-            document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
-            
-            if (timeLeft < 0) {
-                clearInterval(countdownInterval);
-                document.querySelector('.countdown').innerHTML = '<div class="date">¡Ya estamos de vuelta!</div>';
-            }
-        }
-        
-        const countdownInterval = setInterval(updateCountdown, 1000);
-        updateCountdown();
-    </script>
+            <div class="setting-card">
+              <h3>⚡ Calidad</h3>
+              <div class="setting-options">
+                <label class="setting-option">
+                  <select id="content-quality">
+                    <option value="high">Alta calidad</option>
+                    <option value="balanced" selected>Equilibrado</option>
+                    <option value="data">Modo ahorro</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="setting-card">
+              <h3>📺 Fuentes</h3>
+              <div class="setting-options">
+                <label class="setting-option toggle-option">
+                  <input type="checkbox" id="tvmaze-toggle" checked>
+                  <span class="toggle-slider"></span>
+                  <span class="option-label">Mas contenido</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>

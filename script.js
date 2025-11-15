@@ -1,4 +1,3 @@
-// Configuration
 const CONFIG = {
   TMDB_API_KEY: 'cdf9b6a0255cebc133ce4d9aaaee8d6d',
   TVMAZE_API_KEY: 'zA6qewWidZMGR1slbPXX-REnvSJ02VG2',
@@ -7,106 +6,63 @@ const CONFIG = {
   IMG_BASE_URL: 'https://image.tmdb.org/t/p/w500',
   MAX_RETRIES: 3,
   INITIAL_DELAY: 1000,
-  AUTO_UPDATE_INTERVAL: 5 * 60 * 1000,
-  CACHE_DURATION: 15 * 60 * 1000
+  CACHE_DURATION: 15 * 60 * 1000,
+  ACCESS_CODE: 'TV2025'
 };
 
-// Application State
 const State = {
   currentType: 'now_playing',
   currentAbortController: null,
-  autoUpdateTimer: null,
-  lastUpdate: null,
-  isPageVisible: true,
   isLoading: false,
   lastItem: null,
   cache: {},
   cacheExpiry: {},
-  contentSignatures: {},
   favorites: JSON.parse(localStorage.getItem('cartel_favorites')) || [],
   watchlist: JSON.parse(localStorage.getItem('cartel_watchlist')) || [],
   history: JSON.parse(localStorage.getItem('cartel_history')) || [],
   settings: JSON.parse(localStorage.getItem('cartel_settings')) || {
-    theme: 'auto',
-    notifications: true,
-    updates: true,
-    smartMode: true,
+    theme: 'azul',
     contentQuality: 'balanced',
     includeTVmaze: true
   },
-  deferredPrompt: null,
   isOnline: navigator.onLine
 };
 
-// PWA Service Worker Registration
-async function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      console.log('Service Worker registrado correctamente');
-      
-      if ('Notification' in window && 'PushManager' in window) {
-        await setupPushNotifications(registration);
-      }
-    } catch (error) {
-      console.log('Error registrando Service Worker:', error);
-    }
+function setupAccessModal() {
+  const accessModal = document.getElementById('access-modal');
+  const accessCodeInput = document.getElementById('access-code');
+  const submitButton = document.getElementById('submit-code');
+  const errorMessage = document.getElementById('error-message');
+  
+  const hasAccess = localStorage.getItem('cartel_access_granted');
+  if (hasAccess === 'true') {
+    accessModal.classList.add('hidden');
+    document.getElementById('main-app').classList.remove('hidden');
+    return;
   }
-}
-
-// Push Notifications Setup
-async function setupPushNotifications(registration) {
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      console.log('Permisos de notificación concedidos');
-    }
-  } catch (error) {
-    console.log('Error configurando notificaciones:', error);
-  }
-}
-
-// Install Prompt Handling
-function setupInstallPrompt() {
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    State.deferredPrompt = e;
-    showInstallButton();
-  });
-
-  window.addEventListener('appinstalled', () => {
-    State.deferredPrompt = null;
-    hideInstallButton();
-    showNotification('¡Cartel TV instalado correctamente! 🎉');
-  });
-}
-
-function showInstallButton() {
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) {
-    installBtn.classList.remove('hidden');
-  }
-}
-
-function hideInstallButton() {
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) {
-    installBtn.classList.add('hidden');
-  }
-}
-
-async function installApp() {
-  if (State.deferredPrompt) {
-    State.deferredPrompt.prompt();
-    const { outcome } = await State.deferredPrompt.userChoice;
+  
+  submitButton.addEventListener('click', () => {
+    const enteredCode = accessCodeInput.value.trim();
     
-    if (outcome === 'accepted') {
-      State.deferredPrompt = null;
+    if (enteredCode === CONFIG.ACCESS_CODE) {
+      localStorage.setItem('cartel_access_granted', 'true');
+      accessModal.classList.add('hidden');
+      document.getElementById('main-app').classList.remove('hidden');
+      showNotification('Acceso concedido');
+    } else {
+      errorMessage.classList.remove('hidden');
+      accessCodeInput.value = '';
+      accessCodeInput.focus();
     }
-  }
+  });
+  
+  accessCodeInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      submitButton.click();
+    }
+  });
 }
 
-// Theme Management
 function setupTheme() {
   const savedTheme = State.settings.theme;
   applyTheme(savedTheme);
@@ -127,21 +83,14 @@ function setupTheme() {
 }
 
 function applyTheme(theme) {
-  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  
-  if (theme === 'auto') {
-    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  } else {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-  
+  document.documentElement.setAttribute('data-theme', theme);
   State.settings.theme = theme;
-  updateThemeIcon(theme, isDark);
+  updateThemeIcon(theme);
 }
 
 function toggleTheme() {
   const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  const newTheme = currentTheme === 'azul' ? 'dorado' : 'azul';
   
   applyTheme(newTheme);
   
@@ -151,37 +100,17 @@ function toggleTheme() {
   });
   
   saveSettings();
-  showNotification(`Tema cambiado a ${newTheme === 'dark' ? 'oscuro' : 'claro'}`);
+  showNotification(`Tema cambiado a ${newTheme === 'azul' ? 'Azul Profesional' : 'Dorado Premium'}`);
 }
 
-function updateThemeIcon(theme, isDark) {
+function updateThemeIcon(theme) {
   const themeIcon = document.querySelector('.theme-icon');
   if (themeIcon) {
-    const effectiveTheme = theme === 'auto' ? (isDark ? 'dark' : 'light') : theme;
-    themeIcon.textContent = effectiveTheme === 'dark' ? '🌙' : '☀️';
+    themeIcon.textContent = theme === 'azul' ? '🔵' : '💎';
   }
 }
 
-// Settings Management
 function setupSettings() {
-  const notificationsToggle = document.getElementById('notifications-toggle');
-  if (notificationsToggle) {
-    notificationsToggle.checked = State.settings.notifications;
-    notificationsToggle.addEventListener('change', saveSettings);
-  }
-  
-  const updatesToggle = document.getElementById('updates-toggle');
-  if (updatesToggle) {
-    updatesToggle.checked = State.settings.updates;
-    updatesToggle.addEventListener('change', saveSettings);
-  }
-  
-  const smartModeToggle = document.getElementById('smart-mode-toggle');
-  if (smartModeToggle) {
-    smartModeToggle.checked = State.settings.smartMode;
-    smartModeToggle.addEventListener('change', saveSettings);
-  }
-  
   const contentQuality = document.getElementById('content-quality');
   if (contentQuality) {
     contentQuality.value = State.settings.contentQuality;
@@ -197,10 +126,7 @@ function setupSettings() {
 
 function saveSettings() {
   State.settings = {
-    theme: document.querySelector('input[name="theme"]:checked')?.value || 'auto',
-    notifications: document.getElementById('notifications-toggle')?.checked || true,
-    updates: document.getElementById('updates-toggle')?.checked || true,
-    smartMode: document.getElementById('smart-mode-toggle')?.checked || true,
+    theme: document.querySelector('input[name="theme"]:checked')?.value || 'azul',
     contentQuality: document.getElementById('content-quality')?.value || 'balanced',
     includeTVmaze: document.getElementById('tvmaze-toggle')?.checked || true
   };
@@ -209,7 +135,6 @@ function saveSettings() {
   applyTheme(State.settings.theme);
 }
 
-// Navigation and Menu
 function setupNavigation() {
   const menuBtn = document.getElementById('menu-btn');
   const sideMenu = document.getElementById('side-menu');
@@ -260,7 +185,6 @@ function showSection(sectionId) {
   }
 }
 
-// Favorites Management
 function setupFavorites() {
   const favoriteBtn = document.getElementById('favorite-btn');
   if (favoriteBtn) {
@@ -280,14 +204,14 @@ function toggleFavorite() {
   
   if (existingIndex >= 0) {
     State.favorites.splice(existingIndex, 1);
-    showNotification('❌ Eliminado de favoritos');
+    showNotification('Eliminado de favoritos');
   } else {
     State.favorites.push({
       ...item,
       media_type: item.title ? 'movie' : 'tv',
       added_at: new Date().toISOString()
     });
-    showNotification('❤️ Añadido a favoritos');
+    showNotification('Añadido a favoritos');
   }
   
   localStorage.setItem('cartel_favorites', JSON.stringify(State.favorites));
@@ -338,7 +262,6 @@ function loadFavorites() {
   `).join('');
 }
 
-// Watchlist Management
 function setupWatchlist() {
   const watchlistBtn = document.getElementById('watchlist-btn');
   if (watchlistBtn) {
@@ -356,14 +279,14 @@ function toggleWatchlist() {
   
   if (existingIndex >= 0) {
     State.watchlist.splice(existingIndex, 1);
-    showNotification('❌ Eliminado de la lista');
+    showNotification('Eliminado de la lista');
   } else {
     State.watchlist.push({
       ...item,
       media_type: item.title ? 'movie' : 'tv',
       added_at: new Date().toISOString()
     });
-    showNotification('📝 Añadido a por ver');
+    showNotification('Añadido a por ver');
   }
   
   localStorage.setItem('cartel_watchlist', JSON.stringify(State.watchlist));
@@ -414,7 +337,6 @@ function loadWatchlist() {
   `).join('');
 }
 
-// History Management
 function addToHistory(item, action = 'viewed') {
   State.history.unshift({
     ...item,
@@ -479,7 +401,6 @@ function formatRelativeTime(timestamp) {
   return date.toLocaleDateString('es-ES');
 }
 
-// Stats Update
 function updateStats() {
   const favCount = document.getElementById('fav-count');
   const watchCount = document.getElementById('watch-count');
@@ -488,46 +409,6 @@ function updateStats() {
   if (watchCount) watchCount.textContent = State.watchlist.length;
 }
 
-// Share Functionality
-function setupSharing() {
-  const shareBtn = document.getElementById('share-btn');
-  if (shareBtn) {
-    shareBtn.addEventListener('click', shareContent);
-  }
-}
-
-async function shareContent() {
-  if (!State.lastItem) return;
-  
-  const item = State.lastItem.item;
-  const title = item.title || item.name;
-  const year = (item.release_date || item.first_air_date)?.substring(0, 4) || '';
-  const text = `🎬 ¡Mira "${title}${year ? ` (${year})` : ''}" en Cartel TV!`;
-  const url = window.location.href;
-  
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: 'Cartel TV',
-        text,
-        url
-      });
-    } catch (error) {
-      if (error.name !== 'AbortError') {
-        fallbackShare(text, url);
-      }
-    }
-  } else {
-    fallbackShare(text, url);
-  }
-}
-
-function fallbackShare(text, url) {
-  const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-  window.open(shareUrl, '_blank', 'width=600,height=400');
-}
-
-// Notification System
 function showNotification(message, duration = 3000) {
   const notification = document.getElementById('notification');
   const notificationText = document.getElementById('notification-text');
@@ -551,33 +432,23 @@ function setupNotifications() {
   }
 }
 
-// Network Status
 function setupNetworkStatus() {
   window.addEventListener('online', () => {
     State.isOnline = true;
-    showNotification('✅ Conexión restaurada', 2000);
+    showNotification('Conexión restaurada', 2000);
   });
   
   window.addEventListener('offline', () => {
     State.isOnline = false;
-    showNotification('⚠️ Sin conexión', 4000);
+    showNotification('Sin conexión', 4000);
   });
 }
 
-// Core Application Functions
 function cleanup() {
   if (State.currentAbortController) {
     State.currentAbortController.abort();
     State.currentAbortController = null;
   }
-  if (State.autoUpdateTimer) {
-    clearTimeout(State.autoUpdateTimer);
-    State.autoUpdateTimer = null;
-  }
-}
-
-function formatTime(date) {
-  return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
 async function fetchWithRetry(url, retries = CONFIG.MAX_RETRIES, delay = CONFIG.INITIAL_DELAY) {
@@ -605,7 +476,6 @@ async function fetchWithRetry(url, retries = CONFIG.MAX_RETRIES, delay = CONFIG.
   }
 }
 
-// TVmaze API Functions
 async function fetchTVmazeShows() {
   try {
     const response = await fetch(`${CONFIG.TVMAZE_BASE_URL}/shows`);
@@ -676,21 +546,13 @@ async function fetchTVmazeSchedule() {
   }
 }
 
-function generateSignature(items, maxItems = 20) {
-  return items
-    .slice(0, maxItems)
-    .map(item => {
-      const id = item.id || 0;
-      const date = (item.release_date || item.first_air_date || '0000-00-00').substring(0, 10);
-      return `${id}-${date}`;
-    })
-    .sort()
-    .join('|');
-}
-
 async function fetchContentByType(type) {
   const now = Date.now();
   const cacheValid = State.cache[type]?.length > 0 && now < State.cacheExpiry[type];
+
+  if (cacheValid) {
+    return State.cache[type];
+  }
 
   let language = 'es-ES';
   let rawData = [];
@@ -700,6 +562,26 @@ async function fetchContentByType(type) {
       case 'now_playing':
         const nowPlaying = await fetchWithRetry(`${CONFIG.BASE_URL}/movie/now_playing?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&region=ES`);
         rawData = nowPlaying.results || [];
+        break;
+        
+      case 'popular_movies':
+        const popMovies = await fetchWithRetry(`${CONFIG.BASE_URL}/movie/popular?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`);
+        rawData = popMovies.results || [];
+        break;
+        
+      case 'top_rated_movies':
+        const topMovies = await fetchWithRetry(`${CONFIG.BASE_URL}/movie/top_rated?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`);
+        rawData = topMovies.results || [];
+        break;
+        
+      case 'upcoming':
+        const upcoming = await fetchWithRetry(`${CONFIG.BASE_URL}/movie/upcoming?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&region=ES`);
+        rawData = upcoming.results || [];
+        break;
+
+      case 'upcoming_movies':
+        const upcomingMovies = await fetchWithRetry(`${CONFIG.BASE_URL}/movie/upcoming?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&region=ES`);
+        rawData = upcomingMovies.results || [];
         break;
         
       case 'on_the_air':
@@ -713,31 +595,36 @@ async function fetchContentByType(type) {
         rawData = combinedShows;
         break;
         
-      case 'upcoming':
-        const upcoming = await fetchWithRetry(`${CONFIG.BASE_URL}/movie/upcoming?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&region=ES`);
-        rawData = upcoming.results || [];
-        break;
-        
-      case 'popular':
-        const [popMovies, popTVs, tvmazeShows] = await Promise.all([
-          fetchWithRetry(`${CONFIG.BASE_URL}/movie/popular?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`),
+      case 'popular_tv':
+        const [popTVs, tvmazeShows] = await Promise.all([
           fetchWithRetry(`${CONFIG.BASE_URL}/tv/popular?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`),
           State.settings.includeTVmaze ? fetchTVmazeShows() : Promise.resolve([])
         ]);
         
-        rawData = [
-          ...(popMovies.results || []), 
-          ...(popTVs.results || []),
-          ...tvmazeShows
-        ];
+        rawData = [...(popTVs.results || []), ...tvmazeShows];
         break;
         
-      case 'top_rated':
-        const [topMovies, topTVs] = await Promise.all([
-          fetchWithRetry(`${CONFIG.BASE_URL}/movie/top_rated?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`),
-          fetchWithRetry(`${CONFIG.BASE_URL}/tv/top_rated?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`)
-        ]);
-        rawData = [...(topMovies.results || []), ...(topTVs.results || [])];
+      case 'top_rated_tv':
+        const topTVs = await fetchWithRetry(`${CONFIG.BASE_URL}/tv/top_rated?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`);
+        rawData = topTVs.results || [];
+        break;
+
+      case 'airing_today':
+        const airingToday = await fetchWithRetry(`${CONFIG.BASE_URL}/tv/airing_today?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`);
+        rawData = airingToday.results || [];
+        break;
+
+      case 'upcoming_tv':
+        const upcomingTV = await fetchWithRetry(`${CONFIG.BASE_URL}/tv/on_the_air?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`);
+        rawData = upcomingTV.results || [];
+        break;
+        
+      case 'tvmaze_shows':
+        rawData = State.settings.includeTVmaze ? await fetchTVmazeShows() : [];
+        break;
+
+      case 'tvmaze_schedule':
+        rawData = State.settings.includeTVmaze ? await fetchTVmazeSchedule() : [];
         break;
         
       case 'trending':
@@ -746,6 +633,34 @@ async function fetchContentByType(type) {
           fetchWithRetry(`${CONFIG.BASE_URL}/trending/tv/week?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`)
         ]);
         rawData = [...(trendingMovies.results || []), ...(trendingTVs.results || [])];
+        break;
+
+      case 'latest':
+        const [latestMovies, latestTV] = await Promise.all([
+          fetchWithRetry(`${CONFIG.BASE_URL}/movie/latest?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`),
+          fetchWithRetry(`${CONFIG.BASE_URL}/tv/latest?api_key=${CONFIG.TMDB_API_KEY}&language=${language}`)
+        ]);
+        rawData = [latestMovies, latestTV].filter(item => item && (item.title || item.name));
+        break;
+
+      case 'action':
+        const action = await fetchWithRetry(`${CONFIG.BASE_URL}/discover/movie?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&with_genres=28`);
+        rawData = action.results || [];
+        break;
+
+      case 'comedy':
+        const comedy = await fetchWithRetry(`${CONFIG.BASE_URL}/discover/movie?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&with_genres=35`);
+        rawData = comedy.results || [];
+        break;
+
+      case 'drama':
+        const drama = await fetchWithRetry(`${CONFIG.BASE_URL}/discover/movie?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&with_genres=18`);
+        rawData = drama.results || [];
+        break;
+
+      case 'documentary':
+        const documentary = await fetchWithRetry(`${CONFIG.BASE_URL}/discover/movie?api_key=${CONFIG.TMDB_API_KEY}&language=${language}&with_genres=99`);
+        rawData = documentary.results || [];
         break;
         
       default:
@@ -759,17 +674,8 @@ async function fetchContentByType(type) {
       return item.poster_path && (item.title || item.name);
     });
 
-    const newSignature = generateSignature(valid);
-
-    if (cacheValid && State.contentSignatures[type] !== newSignature) {
-      console.log(`🔍 Novedades detectadas en "${type}". Actualizando caché.`);
-    } else if (cacheValid) {
-      return State.cache[type];
-    }
-
     State.cache[type] = valid;
     State.cacheExpiry[type] = now + CONFIG.CACHE_DURATION;
-    State.contentSignatures[type] = newSignature;
 
     return valid;
   } catch (error) {
@@ -778,46 +684,13 @@ async function fetchContentByType(type) {
   }
 }
 
-async function getRandomContent(type) {
+async function getContentByType(type) {
   const items = await fetchContentByType(type);
   if (items.length === 0) {
     throw new Error('No hay contenido disponible en esta categoría.');
   }
   
-  if (State.settings.smartMode && State.history.length > 0) {
-    return getSmartRecommendation(items);
-  }
-  
-  return items[Math.floor(Math.random() * items.length)];
-}
-
-function getSmartRecommendation(items) {
-  const genreWeights = {};
-  
-  State.history.forEach(item => {
-    if (item.genre_ids) {
-      item.genre_ids.forEach(genreId => {
-        genreWeights[genreId] = (genreWeights[genreId] || 0) + 1;
-      });
-    }
-  });
-  
-  const scoredItems = items.map(item => {
-    let score = 0;
-    if (item.genre_ids) {
-      item.genre_ids.forEach(genreId => {
-        score += genreWeights[genreId] || 0;
-      });
-    }
-    return { item, score };
-  });
-  
-  scoredItems.sort((a, b) => b.score - a.score);
-  const topItems = scoredItems.slice(0, Math.ceil(scoredItems.length * 0.3));
-  
-  return topItems.length > 0 ? 
-    topItems[Math.floor(Math.random() * topItems.length)].item : 
-    items[Math.floor(Math.random() * items.length)];
+  return items;
 }
 
 function renderContent(item) {
@@ -869,7 +742,6 @@ function renderContent(item) {
   }
   
   container.appendChild(overview);
-  container.classList.add('visible');
   
   State.lastItem = { item, type: State.currentType };
   addToHistory(item, 'viewed');
@@ -886,16 +758,14 @@ function renderError(message) {
       <div class="error-icon">⚠️</div>
       <h3>Error al cargar contenido</h3>
       <p>${message}</p>
-      <button onclick="loadContent(false)" class="action-btn premium-btn">
+      <button onclick="loadContent()" class="action-btn">
         Reintentar
       </button>
     </div>
   `;
-  container.classList.add('visible');
 }
 
-async function loadContent(isAuto = false) {
-  if (!State.isPageVisible && isAuto) return;
+async function loadContent() {
   if (State.isLoading) return;
   
   State.isLoading = true;
@@ -908,200 +778,64 @@ async function loadContent(isAuto = false) {
 
   if (btn) btn.disabled = true;
   if (loading) loading.style.display = 'flex';
-  if (container) container.classList.remove('visible');
+  if (container) container.innerHTML = '';
 
   try {
-    const item = await getRandomContent(State.currentType);
-    renderContent(item);
-    State.lastUpdate = new Date();
-    
-    const lastUpdateEl = document.getElementById('last-update');
-    if (lastUpdateEl) {
-      lastUpdateEl.textContent = `Última: ${formatTime(State.lastUpdate)}`;
-    }
-    
-    updateCountdown();
-    
-    if (!isAuto) {
-      showNotification('🎬 ¡Nueva recomendación cargada!');
+    const items = await getContentByType(State.currentType);
+    if (items.length > 0) {
+      const randomIndex = Math.floor(Math.random() * items.length);
+      renderContent(items[randomIndex]);
+      showNotification('Contenido cargado correctamente');
+    } else {
+      renderError('No se encontró contenido en esta categoría');
     }
   } catch (error) {
     console.error('Error al cargar contenido:', error);
-    if (State.lastItem && !isAuto) {
-      renderContent(State.lastItem.item);
-    } else {
-      renderError(error.message || 'No se pudo cargar contenido. Verifica tu conexión.');
-    }
+    renderError(error.message || 'No se pudo cargar contenido. Verifica tu conexión.');
   } finally {
     if (loading) loading.style.display = 'none';
     if (btn) btn.disabled = false;
     State.isLoading = false;
-    if (isAuto) scheduleAutoUpdate();
   }
 }
 
-function updateCountdown() {
-  const countdownEl = document.getElementById('countdown');
-  if (!countdownEl) return;
-  
-  if (!State.lastUpdate) {
-    countdownEl.textContent = '--:--';
-    return;
-  }
-  
-  const next = new Date(State.lastUpdate.getTime() + CONFIG.AUTO_UPDATE_INTERVAL);
-  const now = new Date();
-  
-  if (next <= now) {
-    countdownEl.textContent = '--:--';
-    return;
-  }
-  
-  const diff = next - now;
-  const mins = Math.floor(diff / 60000);
-  const secs = Math.floor((diff % 60000) / 1000);
-  countdownEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  
-  setTimeout(updateCountdown, 1000);
-}
-
-function scheduleAutoUpdate() {
-  cleanup();
-  State.autoUpdateTimer = setTimeout(() => loadContent(true), CONFIG.AUTO_UPDATE_INTERVAL);
-  updateCountdown();
-}
-
-// Smart Filter
-function setupSmartFilter() {
-  const smartFilter = document.getElementById('smart-filter');
-  if (smartFilter) {
-    smartFilter.addEventListener('click', () => {
-      smartFilter.classList.toggle('active');
-      State.settings.smartMode = smartFilter.classList.contains('active');
-      saveSettings();
-      
-      showNotification(
-        State.settings.smartMode ? 
-        '🤖 Modo inteligente activado' : 
-        '🔍 Modo inteligente desactivado'
-      );
-    });
-  }
-}
-
-// Shuffle Functionality
-function setupShuffle() {
-  const shuffleBtn = document.getElementById('shuffle-btn');
-  if (shuffleBtn) {
-    shuffleBtn.addEventListener('click', () => {
-      loadContent(false);
-      showNotification('🔀 Mezclando contenido...');
-    });
-  }
-}
-
-// Refresh Functionality
-function setupRefresh() {
-  const refreshBtn = document.getElementById('refresh-btn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', () => {
-      loadContent(false);
-    });
-  }
-}
-
-// Filter Management
 function setupFilters() {
   const filterBtns = document.querySelectorAll('.filter-btn');
   filterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       if (btn.classList.contains('active')) return;
       
-      filterBtns.forEach(b => {
-        b.classList.remove('active');
-        b.setAttribute('aria-checked', 'false');
-      });
-      
+      filterBtns.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      btn.setAttribute('aria-checked', 'true');
       State.currentType = btn.dataset.type;
       
-      loadContent(false);
-      showNotification(`Filtro cambiado a: ${btn.textContent.trim()}`);
+      loadContent();
+      showNotification(`Categoría: ${btn.textContent.trim()}`);
     });
   });
 }
 
-// Loading Screen
-function setupLoadingScreen() {
-  setTimeout(() => {
-    const loadingScreen = document.getElementById('loading-screen');
-    const mainApp = document.getElementById('main-app');
-    
-    if (loadingScreen && mainApp) {
-      loadingScreen.classList.add('fade-out');
-      
-      setTimeout(() => {
-        loadingScreen.style.display = 'none';
-        mainApp.classList.remove('hidden');
-        mainApp.classList.add('loaded');
-        
-        loadContent(false);
-      }, 500);
-    }
-  }, 2000);
-}
-
-// Initialize Application
 function initApp() {
-  setupLoadingScreen();
+  setupAccessModal();
   setupTheme();
   setupSettings();
   setupNavigation();
   setupFavorites();
   setupWatchlist();
-  setupSharing();
   setupNotifications();
   setupNetworkStatus();
-  setupSmartFilter();
-  setupShuffle();
-  setupRefresh();
   setupFilters();
-  setupInstallPrompt();
-  registerServiceWorker();
   
-  document.addEventListener('visibilitychange', () => {
-    State.isPageVisible = !document.hidden;
-    if (State.isPageVisible && State.lastUpdate) {
-      const elapsed = Date.now() - State.lastUpdate.getTime();
-      const remaining = Math.max(0, CONFIG.AUTO_UPDATE_INTERVAL - elapsed);
-      if (!State.autoUpdateTimer) {
-        State.autoUpdateTimer = setTimeout(() => loadContent(true), remaining);
-      }
-    }
-  });
-
   const loadBtn = document.getElementById('load-btn');
   if (loadBtn) {
-    loadBtn.addEventListener('click', () => loadContent(false));
+    loadBtn.addEventListener('click', () => loadContent());
   }
 
-  const installBtn = document.getElementById('install-btn');
-  if (installBtn) {
-    installBtn.addEventListener('click', installApp);
-  }
-
-  updateCountdown();
   window.addEventListener('beforeunload', cleanup);
-  
-  console.log('🎬 Cartel TV Premium inicializado correctamente');
 }
 
-// Start the application
 window.addEventListener('DOMContentLoaded', initApp);
 
-// Export functions for global access
 window.toggleFavorite = toggleFavorite;
 window.toggleWatchlist = toggleWatchlist;
-window.shareContent = shareContent;
 window.loadContent = loadContent;
