@@ -11,7 +11,7 @@ const CONFIG = {
 };
 
 const AUTHORIZED_USERS = [
-  { name: "Ana García López", phone: "612345678", password: "Ana2024!" },
+  { name: "Marcos", phone: "+5350369270", password: "CTVP" },
   { name: "Carlos Martínez Ruiz", phone: "623456789", password: "Carlos#123" },
   { name: "María Fernández Sol", phone: "634567890", password: "Maria$456" },
   { name: "José Rodríguez Mar", phone: "645678901", password: "Jose789%" },
