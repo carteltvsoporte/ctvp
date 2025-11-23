@@ -1,7 +1,5 @@
 # CTVP
 
-> ¡Descubre qué ver hoy! **Cartel TV Premium** es una plataforma diseñada para ayudarte a encontrar las mejores películas y series, ya sea en cines, en tendencia o próximos estrenos.
-
 <div align="center">
   
 ![Version](https://img.shields.io/badge/version-2.0.0-success?style=for-the-badge)
