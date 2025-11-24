@@ -46,6 +46,11 @@ const SPANISH_DESCRIPTIONS = {
     }
 };
 
+// Variables globales corregidas
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalPoster = document.getElementById('modal-poster');
+const modalTitle = document.getElementById('modal-title');
+
 class APIManager {
     constructor() {
         this.endpoints = {
@@ -62,12 +67,14 @@ class APIManager {
             }
         };
         this.lastRequest = {};
+        this.cache = new Map();
     }
 
     async request(service, endpoint, options = {}) {
         const config = this.endpoints[service];
         const now = Date.now();
         
+        // Rate limiting
         if (this.lastRequest[service] && 
             now - this.lastRequest[service] < config.rateLimit) {
             await new Promise(resolve => 
@@ -77,8 +84,9 @@ class APIManager {
 
         this.lastRequest[service] = Date.now();
         
+        // Construir URL correctamente
         const url = service === 'tmdb' 
-            ? `${config.base}${endpoint}?api_key=${config.key}&language=es-ES`
+            ? `${config.base}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${config.key}&language=es-ES`
             : `${config.base}${endpoint}`;
 
         return this.fetchWithRetry(url, options);
@@ -105,27 +113,42 @@ class APIManager {
     }
 
     async unifiedSearch(query) {
-        const [movies, tv, anime] = await Promise.allSettled([
-            this.request('tmdb', `/search/movie&query=${encodeURIComponent(query)}`),
-            this.request('tmdb', `/search/tv&query=${encodeURIComponent(query)}`),
-            this.request('jikan', `/anime?q=${encodeURIComponent(query)}&limit=12`)
-        ]);
-
-        const results = [];
-        
-        if (movies.status === 'fulfilled') {
-            results.push(...movies.value.results.map(item => ({ ...item, type: 'movie' })));
-        }
-        
-        if (tv.status === 'fulfilled') {
-            results.push(...tv.value.results.map(item => ({ ...item, type: 'tv' })));
-        }
-        
-        if (anime.status === 'fulfilled') {
-            results.push(...anime.value.data.map(item => ({ ...item, type: 'anime' })));
+        const cacheKey = `search_${query}`;
+        if (this.cache.has(cacheKey)) {
+            return this.cache.get(cacheKey);
         }
 
-        return results.sort((a, b) => (b.popularity || b.score || 0) - (a.popularity || a.score || 0));
+        try {
+            const [movies, tv, anime] = await Promise.allSettled([
+                this.request('tmdb', `/search/movie?query=${encodeURIComponent(query)}`).then(r => r.json()),
+                this.request('tmdb', `/search/tv?query=${encodeURIComponent(query)}`).then(r => r.json()),
+                this.request('jikan', `/anime?q=${encodeURIComponent(query)}&limit=12`).then(r => r.json())
+            ]);
+
+            const results = [];
+            
+            if (movies.status === 'fulfilled') {
+                results.push(...(movies.value.results || []).map(item => ({ ...item, type: 'movie' })));
+            }
+            
+            if (tv.status === 'fulfilled') {
+                results.push(...(tv.value.results || []).map(item => ({ ...item, type: 'tv' })));
+            }
+            
+            if (anime.status === 'fulfilled') {
+                results.push(...(anime.value.data || []).map(item => ({ ...item, type: 'anime' })));
+            }
+
+            const sortedResults = results.sort((a, b) => 
+                (b.popularity || b.score || 0) - (a.popularity || a.score || 0)
+            );
+
+            this.cache.set(cacheKey, sortedResults);
+            return sortedResults;
+        } catch (error) {
+            console.error('Error en búsqueda unificada:', error);
+            return [];
+        }
     }
 }
 
@@ -135,7 +158,11 @@ class RecommendationEngine {
     }
 
     loadPreferences() {
-        return JSON.parse(localStorage.getItem('ctvp_user_preferences') || '{}');
+        try {
+            return JSON.parse(localStorage.getItem('ctvp_user_preferences') || '{}');
+        } catch {
+            return {};
+        }
     }
 
     savePreferences(preferences) {
@@ -147,22 +174,37 @@ class RecommendationEngine {
         const preferences = this.userPreferences;
         const recommendations = [];
 
-        if (preferences.favoriteGenres) {
-            for (const genre of preferences.favoriteGenres.slice(0, 3)) {
-                const movies = await apiManager.request('tmdb', 
-                    `/discover/movie&with_genres=${genre.id}&sort_by=popularity.desc`);
-                recommendations.push(...movies.results.slice(0, 5));
-            }
+        if (preferences.favoriteGenres && preferences.favoriteGenres.length > 0) {
+            const genrePromises = preferences.favoriteGenres.slice(0, 3).map(async (genre) => {
+                try {
+                    const response = await apiManager.request('tmdb', 
+                        `/discover/movie?with_genres=${genre.id}&sort_by=popularity.desc`);
+                    const data = await response.json();
+                    return data.results ? data.results.slice(0, 5) : [];
+                } catch (error) {
+                    console.error(`Error cargando género ${genre.id}:`, error);
+                    return [];
+                }
+            });
+
+            const results = await Promise.allSettled(genrePromises);
+            results.forEach(result => {
+                if (result.status === 'fulfilled') {
+                    recommendations.push(...result.value);
+                }
+            });
         }
 
-        return [...new Map(recommendations.map(item => [item.id, item])).values()]
-            .slice(0, 20);
+        // Eliminar duplicados y limitar resultados
+        const uniqueRecommendations = [...new Map(recommendations.map(item => [item.id, item])).values()];
+        return uniqueRecommendations.slice(0, 20);
     }
 }
 
 const apiManager = new APIManager();
 const recommendationEngine = new RecommendationEngine();
 
+// Elementos DOM
 const modeSelector = document.querySelector('.mode-selector-container');
 const modeOptions = document.querySelectorAll('.mode-option');
 const navCategories = document.querySelectorAll('.nav-category');
@@ -179,17 +221,21 @@ const logoutBtn = document.getElementById('logout-btn');
 const viewModeButtons = document.querySelectorAll('.btn-view-mode');
 const filterBtn = document.getElementById('filter-btn');
 
+// Estado de la aplicación
 let currentCategory = 'popular';
 let currentType = 'movie';
 let currentMode = 'movies';
 let currentView = 'grid';
 
+// Observador de imágenes para lazy loading
 const imageObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             const img = entry.target;
-            img.src = img.dataset.src;
-            img.classList.remove('lazy');
+            if (img.dataset.src) {
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+            }
             imageObserver.unobserve(img);
         }
     });
@@ -198,6 +244,7 @@ const imageObserver = new IntersectionObserver((entries) => {
     threshold: 0.1
 });
 
+// Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuthentication()) {
         window.location.href = 'auth-modal.html';
@@ -217,10 +264,10 @@ function initializeApp() {
 }
 
 function checkAuthentication() {
-    const userSession = localStorage.getItem('ctvp_user_session');
-    if (!userSession) return false;
-    
     try {
+        const userSession = localStorage.getItem('ctvp_user_session');
+        if (!userSession) return false;
+        
         const session = JSON.parse(userSession);
         const loginTime = new Date(session.loginTime);
         const now = new Date();
@@ -233,6 +280,7 @@ function checkAuthentication() {
 }
 
 function setupEventListeners() {
+    // Selector de modo
     modeOptions.forEach(option => {
         option.addEventListener('click', () => {
             const mode = option.dataset.mode;
@@ -241,6 +289,7 @@ function setupEventListeners() {
         });
     });
     
+    // Navegación
     navSubitems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
@@ -251,11 +300,13 @@ function setupEventListeners() {
         });
     });
     
+    // Búsqueda
     searchButton.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performSearch();
     });
     
+    // Modal
     modalClose.addEventListener('click', () => {
         modal.style.display = 'none';
     });
@@ -264,9 +315,11 @@ function setupEventListeners() {
         if (e.target === modal) modal.style.display = 'none';
     });
     
+    // Usuario
     userMenuBtn.addEventListener('click', toggleUserMenu);
     logoutBtn.addEventListener('click', logout);
     
+    // Vista
     viewModeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
@@ -274,8 +327,10 @@ function setupEventListeners() {
         });
     });
     
+    // Filtros
     filterBtn.addEventListener('click', showFilterOptions);
     
+    // Favoritos
     document.getElementById('favorites-link').addEventListener('click', showFavorites);
     document.getElementById('btn-favorite').addEventListener('click', handleFavorite);
 }
@@ -353,14 +408,14 @@ async function loadContent() {
             let endpoint = '';
             
             if (currentCategory === 'favorite') {
-                endpoint = 'top/anime?filter=favorite';
+                endpoint = '/top/anime?filter=favorite';
             } else if (['tv', 'movie', 'ova', 'special'].includes(currentCategory)) {
-                endpoint = `top/anime?type=${currentCategory}`;
+                endpoint = `/top/anime?type=${currentCategory}`;
             } else {
-                endpoint = `top/anime?filter=${currentCategory}`;
+                endpoint = `/top/anime?filter=${currentCategory}`;
             }
             
-            const response = await apiManager.request('jikan', `/${endpoint}&limit=24`);
+            const response = await apiManager.request('jikan', `${endpoint}&limit=24`);
             const animeData = await response.json();
             data = animeData.data || [];
         }
@@ -380,6 +435,8 @@ async function loadContent() {
 }
 
 function displayContent(items) {
+    if (!contentGrid) return;
+    
     contentGrid.innerHTML = '';
     
     if (!items || items.length === 0) {
@@ -460,13 +517,28 @@ function applyContentView() {
         if (currentView === 'list') {
             card.style.display = 'flex';
             card.style.flexDirection = 'row';
-            card.querySelector('.card-image').style.width = '120px';
-            card.querySelector('.card-image').style.height = '180px';
-            card.querySelector('.card-info').style.flex = '1';
+            const img = card.querySelector('.card-image');
+            const info = card.querySelector('.card-info');
+            if (img) {
+                img.style.width = '120px';
+                img.style.height = '180px';
+                img.style.flexShrink = '0';
+            }
+            if (info) {
+                info.style.flex = '1';
+                info.style.paddingLeft = '1rem';
+            }
         } else {
             card.style.display = 'block';
-            card.querySelector('.card-image').style.width = '100%';
-            card.querySelector('.card-image').style.height = '270px';
+            const img = card.querySelector('.card-image');
+            const info = card.querySelector('.card-info');
+            if (img) {
+                img.style.width = '100%';
+                img.style.height = '270px';
+            }
+            if (info) {
+                info.style.paddingLeft = '';
+            }
         }
     });
 }
@@ -498,6 +570,8 @@ async function showDetails(item, type) {
 }
 
 function populateModal(details, type) {
+    if (!modalBackdrop || !modalPoster || !modalTitle) return;
+    
     let backdropUrl, posterUrl, title, releaseDate, year, rating, overview, genres, runtime, status;
     
     if (currentMode === 'movies') {
@@ -561,19 +635,24 @@ function populateModal(details, type) {
     metaHTML += `<span>★ ${rating}</span>`;
     metaHTML += `<span>${status}</span>`;
     
-    document.getElementById('modal-meta').innerHTML = metaHTML;
-    document.getElementById('modal-overview').textContent = overview;
+    const modalMeta = document.getElementById('modal-meta');
+    if (modalMeta) modalMeta.innerHTML = metaHTML;
+    
+    const modalOverview = document.getElementById('modal-overview');
+    if (modalOverview) modalOverview.textContent = overview;
     
     const modalGenres = document.getElementById('modal-genres');
-    modalGenres.innerHTML = '';
-    if (genres.length > 0) {
-        genres.forEach(genre => {
-            const genreName = SPANISH_DESCRIPTIONS.genres[genre.name] || genre.name || genre;
-            const genreTag = document.createElement('span');
-            genreTag.className = 'genre-tag';
-            genreTag.textContent = genreName;
-            modalGenres.appendChild(genreTag);
-        });
+    if (modalGenres) {
+        modalGenres.innerHTML = '';
+        if (genres.length > 0) {
+            genres.forEach(genre => {
+                const genreName = SPANISH_DESCRIPTIONS.genres[genre.name] || genre.name || genre;
+                const genreTag = document.createElement('span');
+                genreTag.className = 'genre-tag';
+                genreTag.textContent = genreName;
+                modalGenres.appendChild(genreTag);
+            });
+        }
     }
     
     populateAdditionalDetails(details, type);
@@ -617,6 +696,8 @@ function getDetailedAnimeDescription(details) {
 
 function populateAdditionalDetails(details, type) {
     const modalDetails = document.getElementById('modal-details');
+    if (!modalDetails) return;
+    
     modalDetails.innerHTML = '';
     
     if (currentMode === 'movies') {
@@ -709,17 +790,9 @@ async function performSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
     
-    const cacheKey = `ctvp_search_${currentMode}_${query.toLowerCase().replace(/\s+/g, '_')}`;
-    
     try {
-        let allResults = getFromCache(cacheKey);
-        
-        if (!allResults) {
-            showLoading();
-            allResults = await apiManager.unifiedSearch(query);
-            saveToCache(cacheKey, allResults);
-        }
-        
+        showLoading();
+        const allResults = await apiManager.unifiedSearch(query);
         displaySearchResults(allResults, query);
     } catch (error) {
         console.error('Error performing search:', error);
@@ -728,6 +801,8 @@ async function performSearch() {
 }
 
 function displaySearchResults(results, query) {
+    if (!contentGrid || !sectionTitle || !sectionSubtitle) return;
+    
     contentGrid.innerHTML = '';
     sectionTitle.textContent = `Resultados para: "${query}"`;
     sectionSubtitle.textContent = `${results.length} resultados encontrados`;
@@ -744,6 +819,8 @@ function displaySearchResults(results, query) {
 }
 
 function updateSectionTitle() {
+    if (!sectionTitle || !sectionSubtitle) return;
+    
     const titles = {
         'movies': {
             'movie_popular': 'Películas Populares',
@@ -770,7 +847,7 @@ function updateSectionTitle() {
     };
     
     const titleKey = `${currentType}_${currentCategory}`;
-    sectionTitle.textContent = titles[currentMode][titleKey] || 'Contenido Destacado';
+    sectionTitle.textContent = titles[currentMode]?.[titleKey] || 'Contenido Destacado';
     sectionSubtitle.textContent = currentMode === 'movies' ? 'Descubre las mejores películas y series' : 'Explora el mundo del anime';
 }
 
@@ -779,8 +856,11 @@ function updateUserUI() {
     if (userSession) {
         try {
             const user = JSON.parse(userSession);
-            document.getElementById('user-name').textContent = user.name;
-            document.getElementById('user-display-name').textContent = user.name;
+            const userName = document.getElementById('user-name');
+            const userDisplayName = document.getElementById('user-display-name');
+            
+            if (userName) userName.textContent = user.name;
+            if (userDisplayName) userDisplayName.textContent = user.name;
         } catch (e) {
             console.error('Error mostrando información de usuario:', e);
         }
@@ -789,7 +869,7 @@ function updateUserUI() {
 
 function toggleUserMenu() {
     const dropdown = document.getElementById('user-dropdown');
-    dropdown.classList.toggle('active');
+    if (dropdown) dropdown.classList.toggle('active');
 }
 
 function logout() {
@@ -809,13 +889,15 @@ function showFavorites() {
         showEmptyState('No tienes favoritos guardados.');
     } else {
         displayContent(favoriteItems);
-        sectionTitle.textContent = 'Tus Favoritos';
-        sectionSubtitle.textContent = `${favoriteItems.length} elementos guardados`;
+        if (sectionTitle) sectionTitle.textContent = 'Tus Favoritos';
+        if (sectionSubtitle) sectionSubtitle.textContent = `${favoriteItems.length} elementos guardados`;
     }
 }
 
 function handleFavorite() {
-    const title = document.getElementById('modal-title').textContent;
+    const title = document.getElementById('modal-title')?.textContent;
+    if (!title) return;
+    
     const currentItem = {
         id: Date.now(),
         title: title,
@@ -829,11 +911,14 @@ function handleFavorite() {
 function toggleFavorite(item, type) {
     const favorites = JSON.parse(localStorage.getItem('ctvp_favorites') || '{}');
     const key = `${type}_${item.id || item.mal_id}`;
+    const btnFavorite = document.getElementById('btn-favorite');
+    
+    if (!btnFavorite) return;
     
     if (favorites[key]) {
         delete favorites[key];
         showNotification('Eliminado de favoritos', 'info');
-        document.getElementById('btn-favorite').innerHTML = `
+        btnFavorite.innerHTML = `
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <use href="#heart-icon"></use>
             </svg>
@@ -846,7 +931,7 @@ function toggleFavorite(item, type) {
             addedAt: new Date().toISOString()
         };
         showNotification('Añadido a favoritos', 'success');
-        document.getElementById('btn-favorite').innerHTML = `
+        btnFavorite.innerHTML = `
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <use href="#heart-icon"></use>
             </svg>
@@ -858,6 +943,8 @@ function toggleFavorite(item, type) {
 }
 
 function showLoading() {
+    if (!contentGrid) return;
+    
     contentGrid.innerHTML = `
         <div class="loading">
             <div class="spinner"></div>
@@ -866,6 +953,8 @@ function showLoading() {
 }
 
 function showEmptyState(message) {
+    if (!contentGrid) return;
+    
     contentGrid.innerHTML = `
         <div class="empty-state">
             <svg width="100" height="100" viewBox="0 0 24 24" fill="none">
@@ -935,8 +1024,9 @@ function setupPeriodicUpdates() {
         
         if (needsUpdate) {
             loadContent();
+            showNotification('Contenido actualizado', 'info');
         }
-    }, 60 * 60 * 1000);
+    }, 60 * 60 * 1000); // Cada hora
 }
 
 function preloadCriticalImages() {
@@ -945,4 +1035,9 @@ function preloadCriticalImages() {
         img.src = img.dataset.src;
         img.classList.remove('lazy');
     });
+}
+
+// Exportar para pruebas (si es necesario)
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { APIManager, RecommendationEngine };
 }
