@@ -1,210 +1,8 @@
-const API_KEY = 'cdf9b6a0255cebc133ce4d9aaaee8d6d';
-const BASE_URL = 'https://api.themoviedb.org/3';
-const ANIME_BASE_URL = 'https://api.jikan.moe/v4';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w300';
-const BACKDROP_BASE_URL = 'https://image.tmdb.org/t/p/w780';
-const CACHE_DURATION = 24 * 60 * 60 * 1000;
+let currentCategory = 'popular';
+let currentType = 'movie';
+let currentMode = 'movies';
+let currentView = 'grid';
 
-const CACHE_STRATEGIES = {
-    POPULAR: 2 * 60 * 60 * 1000,
-    TRENDING: 30 * 60 * 1000,
-    SEARCH: 15 * 60 * 1000,
-    DETAILS: 24 * 60 * 60 * 1000
-};
-
-const SPANISH_DESCRIPTIONS = {
-    no_description: "No hay descripción disponible en este momento. Esta película/serie promete ofrecer una experiencia única con su narrativa cautivadora y personajes memorables que te mantendrán enganchado desde el principio hasta el final.",
-    no_synopsis: "Sinopsis no disponible. Esta producción destaca por su calidad visual y narrativa, ofreciendo momentos de gran intensidad dramática y escenas que quedarán grabadas en la memoria del espectador.",
-    genres: {
-        'Action': 'Acción',
-        'Adventure': 'Aventura',
-        'Animation': 'Animación',
-        'Comedy': 'Comedia',
-        'Crime': 'Crimen',
-        'Documentary': 'Documental',
-        'Drama': 'Drama',
-        'Family': 'Familiar',
-        'Fantasy': 'Fantasía',
-        'History': 'Historia',
-        'Horror': 'Terror',
-        'Music': 'Música',
-        'Mystery': 'Misterio',
-        'Romance': 'Romance',
-        'Science Fiction': 'Ciencia Ficción',
-        'TV Movie': 'Película de TV',
-        'Thriller': 'Suspense',
-        'War': 'Bélica',
-        'Western': 'Western'
-    },
-    status: {
-        'Released': 'Estrenada',
-        'In Production': 'En Producción',
-        'Post Production': 'Postproducción',
-        'Returning Series': 'Serie en Curso',
-        'Ended': 'Finalizada',
-        'Canceled': 'Cancelada'
-    }
-};
-
-// Variables globales corregidas
-const modalBackdrop = document.getElementById('modal-backdrop');
-const modalPoster = document.getElementById('modal-poster');
-const modalTitle = document.getElementById('modal-title');
-
-class APIManager {
-    constructor() {
-        this.endpoints = {
-            tmdb: {
-                base: BASE_URL,
-                key: API_KEY,
-                priority: 1,
-                rateLimit: 1000
-            },
-            jikan: {
-                base: ANIME_BASE_URL,
-                priority: 2,
-                rateLimit: 2000
-            }
-        };
-        this.lastRequest = {};
-        this.cache = new Map();
-    }
-
-    async request(service, endpoint, options = {}) {
-        const config = this.endpoints[service];
-        const now = Date.now();
-        
-        // Rate limiting
-        if (this.lastRequest[service] && 
-            now - this.lastRequest[service] < config.rateLimit) {
-            await new Promise(resolve => 
-                setTimeout(resolve, config.rateLimit - (now - this.lastRequest[service]))
-            );
-        }
-
-        this.lastRequest[service] = Date.now();
-        
-        // Construir URL correctamente
-        const url = service === 'tmdb' 
-            ? `${config.base}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${config.key}&language=es-ES`
-            : `${config.base}${endpoint}`;
-
-        return this.fetchWithRetry(url, options);
-    }
-
-    async fetchWithRetry(url, options = {}, maxRetries = 3) {
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                const response = await fetch(url, options);
-                if (response.ok) return response;
-                
-                if (response.status === 429) {
-                    const retryAfter = response.headers.get('Retry-After') || Math.pow(2, attempt);
-                    await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-                    continue;
-                }
-                
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            } catch (error) {
-                if (attempt === maxRetries) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-            }
-        }
-    }
-
-    async unifiedSearch(query) {
-        const cacheKey = `search_${query}`;
-        if (this.cache.has(cacheKey)) {
-            return this.cache.get(cacheKey);
-        }
-
-        try {
-            const [movies, tv, anime] = await Promise.allSettled([
-                this.request('tmdb', `/search/movie?query=${encodeURIComponent(query)}`).then(r => r.json()),
-                this.request('tmdb', `/search/tv?query=${encodeURIComponent(query)}`).then(r => r.json()),
-                this.request('jikan', `/anime?q=${encodeURIComponent(query)}&limit=12`).then(r => r.json())
-            ]);
-
-            const results = [];
-            
-            if (movies.status === 'fulfilled') {
-                results.push(...(movies.value.results || []).map(item => ({ ...item, type: 'movie' })));
-            }
-            
-            if (tv.status === 'fulfilled') {
-                results.push(...(tv.value.results || []).map(item => ({ ...item, type: 'tv' })));
-            }
-            
-            if (anime.status === 'fulfilled') {
-                results.push(...(anime.value.data || []).map(item => ({ ...item, type: 'anime' })));
-            }
-
-            const sortedResults = results.sort((a, b) => 
-                (b.popularity || b.score || 0) - (a.popularity || a.score || 0)
-            );
-
-            this.cache.set(cacheKey, sortedResults);
-            return sortedResults;
-        } catch (error) {
-            console.error('Error en búsqueda unificada:', error);
-            return [];
-        }
-    }
-}
-
-class RecommendationEngine {
-    constructor() {
-        this.userPreferences = this.loadPreferences();
-    }
-
-    loadPreferences() {
-        try {
-            return JSON.parse(localStorage.getItem('ctvp_user_preferences') || '{}');
-        } catch {
-            return {};
-        }
-    }
-
-    savePreferences(preferences) {
-        this.userPreferences = { ...this.userPreferences, ...preferences };
-        localStorage.setItem('ctvp_user_preferences', JSON.stringify(this.userPreferences));
-    }
-
-    async getRecommendations() {
-        const preferences = this.userPreferences;
-        const recommendations = [];
-
-        if (preferences.favoriteGenres && preferences.favoriteGenres.length > 0) {
-            const genrePromises = preferences.favoriteGenres.slice(0, 3).map(async (genre) => {
-                try {
-                    const response = await apiManager.request('tmdb', 
-                        `/discover/movie?with_genres=${genre.id}&sort_by=popularity.desc`);
-                    const data = await response.json();
-                    return data.results ? data.results.slice(0, 5) : [];
-                } catch (error) {
-                    console.error(`Error cargando género ${genre.id}:`, error);
-                    return [];
-                }
-            });
-
-            const results = await Promise.allSettled(genrePromises);
-            results.forEach(result => {
-                if (result.status === 'fulfilled') {
-                    recommendations.push(...result.value);
-                }
-            });
-        }
-
-        // Eliminar duplicados y limitar resultados
-        const uniqueRecommendations = [...new Map(recommendations.map(item => [item.id, item])).values()];
-        return uniqueRecommendations.slice(0, 20);
-    }
-}
-
-const apiManager = new APIManager();
-const recommendationEngine = new RecommendationEngine();
-
-// Elementos DOM
 const modeSelector = document.querySelector('.mode-selector-container');
 const modeOptions = document.querySelectorAll('.mode-option');
 const navCategories = document.querySelectorAll('.nav-category');
@@ -220,31 +18,10 @@ const userMenuBtn = document.getElementById('user-menu-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const viewModeButtons = document.querySelectorAll('.btn-view-mode');
 const filterBtn = document.getElementById('filter-btn');
+const modalBackdrop = document.getElementById('modal-backdrop');
+const modalPoster = document.getElementById('modal-poster');
+const modalTitle = document.getElementById('modal-title');
 
-// Estado de la aplicación
-let currentCategory = 'popular';
-let currentType = 'movie';
-let currentMode = 'movies';
-let currentView = 'grid';
-
-// Observador de imágenes para lazy loading
-const imageObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if (entry.isIntersecting) {
-            const img = entry.target;
-            if (img.dataset.src) {
-                img.src = img.dataset.src;
-                img.classList.remove('lazy');
-            }
-            imageObserver.unobserve(img);
-        }
-    });
-}, {
-    rootMargin: '50px 0px',
-    threshold: 0.1
-});
-
-// Inicialización de la aplicación
 document.addEventListener('DOMContentLoaded', () => {
     if (!checkAuthentication()) {
         window.location.href = 'auth-modal.html';
@@ -280,7 +57,6 @@ function checkAuthentication() {
 }
 
 function setupEventListeners() {
-    // Selector de modo
     modeOptions.forEach(option => {
         option.addEventListener('click', () => {
             const mode = option.dataset.mode;
@@ -289,7 +65,6 @@ function setupEventListeners() {
         });
     });
     
-    // Navegación
     navSubitems.forEach(item => {
         item.addEventListener('click', (e) => {
             e.preventDefault();
@@ -300,13 +75,11 @@ function setupEventListeners() {
         });
     });
     
-    // Búsqueda
     searchButton.addEventListener('click', performSearch);
     searchInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') performSearch();
     });
     
-    // Modal
     modalClose.addEventListener('click', () => {
         modal.style.display = 'none';
     });
@@ -315,11 +88,9 @@ function setupEventListeners() {
         if (e.target === modal) modal.style.display = 'none';
     });
     
-    // Usuario
     userMenuBtn.addEventListener('click', toggleUserMenu);
     logoutBtn.addEventListener('click', logout);
     
-    // Vista
     viewModeButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const view = btn.dataset.view;
@@ -327,10 +98,8 @@ function setupEventListeners() {
         });
     });
     
-    // Filtros
     filterBtn.addEventListener('click', showFilterOptions);
     
-    // Favoritos
     document.getElementById('favorites-link').addEventListener('click', showFavorites);
     document.getElementById('btn-favorite').addEventListener('click', handleFavorite);
 }
@@ -495,7 +264,7 @@ function createContentCard(item) {
                 <span>${year}</span>
                 <div class="card-rating">
                     <svg width="12" height="12" viewBox="0 0 24 24">
-                        <use href="#star-icon"></use>
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor"/>
                     </svg>
                     <span>${rating}</span>
                 </div>
@@ -656,42 +425,6 @@ function populateModal(details, type) {
     }
     
     populateAdditionalDetails(details, type);
-}
-
-function getDetailedSpanishDescription(details, type) {
-    let overview = details.overview;
-    
-    if (!overview || overview.trim() === '') {
-        const title = type === 'movie' ? details.title : details.name;
-        const genres = details.genres?.map(g => SPANISH_DESCRIPTIONS.genres[g.name] || g.name).join(', ') || 'varios géneros';
-        
-        return `${title} es una ${type === 'movie' ? 'película' : 'serie'} de ${genres} que ha capturado la atención del público y la crítica. Con una narrativa cuidadosamente construida y personajes profundamente desarrollados, esta producción ofrece una experiencia cinematográfica memorable. La dirección artística y la fotografía crean una atmósfera única que complementa perfectamente la trama. Los actores principales ofrecen interpretaciones convincentes que dan vida a personajes complejos y fascinantes. La banda sonora y el diseño de sonido contribuyen significativamente a la inmersión del espectador en este universo narrativo. Sin duda, una obra que dejará una huella durarada en quienes tengan la oportunidad de disfrutarla.`;
-    }
-    
-    if (overview.length < 200) {
-        const enhancedText = ` ${overview}. Esta producción se destaca por su excelente dirección, actuaciones memorables y una narrativa que mantiene al espectador completamente inmerso desde el inicio hasta el final. Cada escena está cuidadosamente elaborada para maximizar el impacto emocional y narrativo, creando una experiencia cinematográfica verdaderamente envolvente.`;
-        overview += enhancedText;
-    }
-    
-    return overview;
-}
-
-function getDetailedAnimeDescription(details) {
-    let synopsis = details.synopsis;
-    
-    if (!synopsis || synopsis.trim() === '') {
-        const title = details.title || details.title_english || 'esta serie';
-        const genres = details.genres?.map(g => g.name).join(', ') || 'animación japonesa';
-        
-        return `${title} es un anime del género ${genres} que ha conquistado a audiencias worldwide. Con una animación de alta calidad y una dirección artística excepcional, esta serie transporta a los espectadores a un mundo lleno de personajes carismáticos y situaciones emocionantes. La evolución de los personajes a lo largo de la trama es notable, mostrando un desarrollo psicológico profundo y creíble. Las batallas y secuencias de acción están coreografiadas con maestría, mientras que los momentos dramáticos están cargados de emotividad. La banda sonora complementa perfectamente cada escena, intensificando las emociones y la inmersión. Una obra imprescindible para los amantes del anime que buscan historias bien contadas con personajes inolvidables.`;
-    }
-    
-    if (synopsis.length < 250) {
-        const enhancedText = ` ${synopsis}. Este anime se caracteriza por su excepcional calidad de animación, dirección artística meticulosa y personajes profundamente desarrollados que evolucionan de manera orgánica a lo largo de la serie. Cada arco argumental está cuidadosamente construido para mantener la tensión narrativa y el interés del espectador, combinando acción trepidante con momentos de gran carga emocional. La banda sonora, compuesta específicamente para la serie, realza cada escena creando una experiencia auditiva memorable. Sin duda, una obra que representa lo mejor de la animación japonesa contemporánea.`;
-        synopsis += enhancedText;
-    }
-    
-    return synopsis;
 }
 
 function populateAdditionalDetails(details, type) {
@@ -919,8 +652,8 @@ function toggleFavorite(item, type) {
         delete favorites[key];
         showNotification('Eliminado de favoritos', 'info');
         btnFavorite.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <use href="#heart-icon"></use>
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M20.84 4.61C20.3292 4.099 19.7228 3.69364 19.0554 3.41708C18.3879 3.14052 17.6725 2.99817 16.95 2.99817C16.2275 2.99817 15.5121 3.14052 14.8446 3.41708C14.1772 3.69364 13.5708 4.099 13.06 4.61L12 5.67L10.94 4.61C9.9083 3.5783 8.50903 2.9987 7.05 2.9987C5.59096 2.9987 4.19169 3.5783 3.16 4.61C2.1283 5.6417 1.5487 7.04097 1.5487 8.5C1.5487 9.95903 2.1283 11.3583 3.16 12.39L12 21.23L20.84 12.39C21.351 11.8792 21.7563 11.2728 22.0329 10.6053C22.3095 9.93789 22.4518 9.22248 22.4518 8.5C22.4518 7.77752 22.3095 7.06211 22.0329 6.39465C21.7563 5.72719 21.351 5.12076 20.84 4.61Z" fill="currentColor"/>
             </svg>
             Añadir a Favoritos
         `;
@@ -932,8 +665,8 @@ function toggleFavorite(item, type) {
         };
         showNotification('Añadido a favoritos', 'success');
         btnFavorite.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <use href="#heart-icon"></use>
+            <svg width="20" height="20" viewBox="0 0 24 24">
+                <path d="M20.84 4.61C20.3292 4.099 19.7228 3.69364 19.0554 3.41708C18.3879 3.14052 17.6725 2.99817 16.95 2.99817C16.2275 2.99817 15.5121 3.14052 14.8446 3.41708C14.1772 3.69364 13.5708 4.099 13.06 4.61L12 5.67L10.94 4.61C9.9083 3.5783 8.50903 2.9987 7.05 2.9987C5.59096 2.9987 4.19169 3.5783 3.16 4.61C2.1283 5.6417 1.5487 7.04097 1.5487 8.5C1.5487 9.95903 2.1283 11.3583 3.16 12.39L12 21.23L20.84 12.39C21.351 11.8792 21.7563 11.2728 22.0329 10.6053C22.3095 9.93789 22.4518 9.22248 22.4518 8.5C22.4518 7.77752 22.3095 7.06211 22.0329 6.39465C21.7563 5.72719 21.351 5.12076 20.84 4.61Z" fill="currentColor"/>
             </svg>
             Quitar de Favoritos
         `;
@@ -957,57 +690,13 @@ function showEmptyState(message) {
     
     contentGrid.innerHTML = `
         <div class="empty-state">
-            <svg width="100" height="100" viewBox="0 0 24 24" fill="none">
+            <svg width="100" height="100" viewBox="0 0 24 24">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
             </svg>
             <h3>No hay contenido disponible</h3>
             <p>${message}</p>
         </div>
     `;
-}
-
-function showNotification(message, type = 'info') {
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type}`;
-    notification.textContent = message;
-    notification.setAttribute('aria-live', 'polite');
-    
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease';
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 300);
-    }, 4000);
-}
-
-function isCacheValid(cacheKey) {
-    const cacheData = localStorage.getItem(cacheKey);
-    if (!cacheData) return false;
-    
-    try {
-        const { timestamp } = JSON.parse(cacheData);
-        return (Date.now() - timestamp) < CACHE_DURATION;
-    } catch (e) {
-        return false;
-    }
-}
-
-function saveToCache(cacheKey, data) {
-    const cacheData = { data, timestamp: Date.now() };
-    localStorage.setItem(cacheKey, JSON.stringify(cacheData));
-}
-
-function getFromCache(cacheKey) {
-    try {
-        const cacheData = JSON.parse(localStorage.getItem(cacheKey));
-        return cacheData ? cacheData.data : null;
-    } catch (e) {
-        return null;
-    }
 }
 
 function setupPeriodicUpdates() {
@@ -1026,18 +715,5 @@ function setupPeriodicUpdates() {
             loadContent();
             showNotification('Contenido actualizado', 'info');
         }
-    }, 60 * 60 * 1000); // Cada hora
-}
-
-function preloadCriticalImages() {
-    const criticalImages = document.querySelectorAll('.card-image[data-src]:nth-child(-n+8)');
-    criticalImages.forEach(img => {
-        img.src = img.dataset.src;
-        img.classList.remove('lazy');
-    });
-}
-
-// Exportar para pruebas (si es necesario)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { APIManager, RecommendationEngine };
+    }, 60 * 60 * 1000);
 }

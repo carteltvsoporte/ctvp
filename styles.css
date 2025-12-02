@@ -36,15 +36,6 @@ body{
     font-size: var(--scale-base);
 }
 
-.container {
-    width: min(100% - 2rem, 1400px);
-    margin-inline: auto;
-}
-
-h1 { font-size: var(--scale-2xl); }
-h2 { font-size: var(--scale-xl); }
-h3 { font-size: var(--scale-lg); }
-
 .mode-selector-container{
     position:fixed;
     top:0;
@@ -911,12 +902,6 @@ main{
 .notification-warning{background:var(--warning)}
 .notification-info{background:var(--anime)}
 
-.skeleton {
-    background: linear-gradient(90deg, var(--accent) 25%, var(--hover-bg) 50%, var(--accent) 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
-
 @keyframes fadeIn{
     from{opacity:0}
     to{opacity:1}
@@ -957,19 +942,6 @@ main{
 
 @keyframes spin{
     to{transform:rotate(360deg)}
-}
-
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
 }
 
 @media (prefers-color-scheme: light) {
