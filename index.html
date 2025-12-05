@@ -1,392 +1,208 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CartelTV</title>
-<meta name="description" content="CartelTV - Plataforma de streaming premium con películas, series y anime">
-<meta name="theme-color" content="#3498db">
-<link rel="manifest" href="manifest.json">
-<link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <title>CARTEL TV - Streaming de Anime, Películas y Series</title>
+    <meta name="description" content="Plataforma de streaming con contenido actualizado de APIs reales. Anime, películas, series y más.">
+    <meta name="theme-color" content="#6a11cb">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=128&q=80">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
-<div class="login-screen active" id="loginScreen">
-<div class="login-container">
-<div class="login-header">
-<i class="fas fa-ticket-alt"></i>
-<h1>Cartel TV Premium</h1>
-<p>Acceso por ticket</p>
-</div>
-<div class="login-form" id="loginFormContainer">
-<h2><i class="fas fa-key"></i> Acceder</h2>
-<div class="ticket-input">
-<input type="text" id="ticketInput" placeholder="Ingresa tu ticket" required>
-<button id="loginSubmit"><i class="fas fa-sign-in-alt"></i> Acceder</button>
-</div>
-<div class="ticket-divider">
-<span>¿No tienes ticket?</span>
-</div>
-<button id="generateTicket" class="ticket-generate">
-<i class="fas fa-plus-circle"></i>Tener Ticket
-</button>
-<div class="ticket-info">
-<p><i class="fas fa-info-circle"></i>Envia tu ticket para aprovacion</p>
-</div>
-</div>
-<div class="login-notification" id="loginNotification"></div>
-</div>
-</div>
-<nav class="navbar">
-<div class="nav-left">
-<div class="nav-logo">
-<i class="fas fa-tv"></i>
-<span>CartelTV</span>
-</div>
-<div class="nav-links">
-<a href="#" class="nav-link active" data-section="home"><i class="fas fa-home"></i><span>Inicio</span></a>
-<a href="#" class="nav-link" data-section="movies"><i class="fas fa-film"></i><span>Películas</span></a>
-<a href="#" class="nav-link" data-section="series"><i class="fas fa-tv"></i><span>Series</span></a>
-<a href="#" class="nav-link" data-section="anime"><i class="fas fa-dragon"></i><span>Anime</span></a>
-<a href="#" class="nav-link" data-section="library"><i class="fas fa-bookmark"></i><span>Biblioteca</span></a>
-</div>
-</div>
-<div class="nav-right">
-<button class="nav-icon search-toggle"><i class="fas fa-search"></i></button>
-<button class="nav-icon" id="modeToggle"><i class="fas fa-moon"></i></button>
-<div class="user-dropdown">
-<button class="user-btn"><i class="fas fa-user-circle"></i><span id="userName">Usuario</span><i class="fas fa-chevron-down"></i></button>
-<div class="dropdown-menu">
-<a href="#" data-section="profile"><i class="fas fa-user"></i>Perfil</a>
-<a href="#" data-section="config"><i class="fas fa-cog"></i>Configuración</a>
-<hr>
-<a href="#" id="logoutBtn"><i class="fas fa-sign-out-alt"></i>Cerrar Sesión</a>
-</div>
-</div>
-</div>
-</nav>
-<div class="search-overlay">
-<div class="search-container">
-<input type="text" id="globalSearch" placeholder="Buscar películas, series, anime...">
-<select id="searchCategory">
-<option value="multi">Todo</option>
-<option value="movie">Películas</option>
-<option value="tv">Series</option>
-<option value="anime">Anime</option>
-</select>
-<button id="searchAction"><i class="fas fa-search"></i></button>
-<button class="close-search"><i class="fas fa-times"></i></button>
-</div>
-<div class="search-results" id="searchResults"></div>
-</div>
-<div class="mode-selector" id="modeSelector">
-<div class="mode-modal">
-<h3><i class="fas fa-sliders-h"></i> Modo de Contenido</h3>
-<div class="mode-grid">
-<div class="mode-card" data-mode="tmdb">
-<div class="mode-icon"><i class="fas fa-film"></i></div>
-<h4>Películas & Series</h4>
-<p>Contenido tradicional occidental</p>
-</div>
-<div class="mode-card" data-mode="anime">
-<div class="mode-icon"><i class="fas fa-dragon"></i></div>
-<h4>Anime</h4>
-<p>Animación japonesa</p>
-</div>
-<div class="mode-card" data-mode="mixed">
-<div class="mode-icon"><i class="fas fa-blender"></i></div>
-<h4>Mixto</h4>
-<p>Combinación de ambos</p>
-</div>
-</div>
-<button class="mode-confirm">Confirmar Selección</button>
-</div>
-</div>
-<main class="main-content">
-<section id="homeSection" class="content-section active">
-<div class="hero-banner">
-<div class="hero-text">
-<h1>Cartel TV Premium</h1>
-<p>Streaming Exclucivo</p>
-<button class="hero-cta" id="exploreContent"><i class="fas fa-play"></i> Explorar</button>
-</div>
-</div>
-<div class="content-section-inner">
-<div class="section-header">
-<h2><i class="fas fa-fire"></i> Tendencias</h2>
-<button class="section-filter"><i class="fas fa-filter"></i></button>
-</div>
-<div class="content-scroller" id="trendingScroller"></div>
-<div class="section-header">
-<h2><i class="fas fa-star"></i> Películas Populares</h2>
-<button class="section-filter"><i class="fas fa-filter"></i></button>
-</div>
-<div class="content-grid" id="moviesGrid"></div>
-<div class="section-header">
-<h2><i class="fas fa-broadcast-tower"></i> Series Destacadas</h2>
-<button class="section-filter"><i class="fas fa-filter"></i></button>
-</div>
-<div class="content-grid" id="seriesGrid"></div>
-<div class="section-header">
-<h2><i class="fas fa-dragon"></i> Top Anime</h2>
-<button class="section-filter"><i class="fas fa-filter"></i></button>
-</div>
-<div class="content-grid" id="animeGrid"></div>
-</div>
-</section>
-<section id="moviesSection" class="content-section">
-<div class="section-tools">
-<h1><i class="fas fa-film"></i> Películas</h1>
-<div class="filter-bar">
-<select id="filterMovieGenre">
-<option value="">Género</option>
-</select>
-<select id="filterMovieYear">
-<option value="">Año</option>
-</select>
-<select id="filterMovieSort">
-<option value="popularity.desc">Popularidad</option>
-<option value="vote_average.desc">Mejor Valoradas</option>
-<option value="release_date.desc">Más Recientes</option>
-</select>
-</div>
-</div>
-<div class="content-container" id="moviesContainer"></div>
-</section>
-<section id="seriesSection" class="content-section">
-<div class="section-tools">
-<h1><i class="fas fa-tv"></i> Series</h1>
-<div class="filter-bar">
-<select id="filterSeriesGenre">
-<option value="">Género</option>
-</select>
-<select id="filterSeriesYear">
-<option value="">Año</option>
-</select>
-<select id="filterSeriesStatus">
-<option value="">Estado</option>
-<option value="0">En emisión</option>
-<option value="1">Finalizada</option>
-</select>
-</div>
-</div>
-<div class="content-container" id="seriesContainer"></div>
-</section>
-<section id="animeSection" class="content-section">
-<div class="section-tools">
-<h1><i class="fas fa-dragon"></i> Anime</h1>
-<div class="filter-bar">
-<select id="filterAnimeType">
-<option value="">Tipo</option>
-<option value="tv">TV</option>
-<option value="movie">Película</option>
-<option value="ova">OVA</option>
-</select>
-<select id="filterAnimeStatus">
-<option value="">Estado</option>
-<option value="airing">En emisión</option>
-<option value="complete">Completado</option>
-</select>
-<select id="filterAnimeRating">
-<option value="">Rating</option>
-<option value="g">G</option>
-<option value="pg">PG</option>
-<option value="pg13">PG-13</option>
-</select>
-</div>
-</div>
-<div class="content-container" id="animeContainer"></div>
-</section>
-<section id="librarySection" class="content-section">
-<div class="section-tools">
-<h1><i class="fas fa-bookmark"></i> Biblioteca</h1>
-<div class="library-tabs">
-<button class="tab-btn active" data-tab="watchlist"><i class="fas fa-clock"></i> Por Ver</button>
-<button class="tab-btn" data-tab="watched"><i class="fas fa-eye"></i> Vistos</button>
-<button class="tab-btn" data-tab="favorites"><i class="fas fa-heart"></i> Favoritos</button>
-<button class="tab-btn" data-tab="recommendations"><i class="fas fa-star"></i> Recomendados</button>
-</div>
-</div>
-<div class="library-content" id="libraryContent"></div>
-</section>
-<section id="profileSection" class="content-section">
-<div class="profile-wrapper">
-<div class="profile-sidebar">
-<div class="profile-avatar">
-<div class="avatar-img"><i class="fas fa-user-circle"></i></div>
-<button class="avatar-edit"><i class="fas fa-camera"></i></button>
-</div>
-<h3 id="profileDisplayName">Usuario</h3>
-<div class="profile-stats">
-<div class="stat-box">
-<div class="stat-number" id="statMovies">0</div>
-<div class="stat-label">Películas</div>
-</div>
-<div class="stat-box">
-<div class="stat-number" id="statSeries">0</div>
-<div class="stat-label">Series</div>
-</div>
-<div class="stat-box">
-<div class="stat-number" id="statAnime">0</div>
-<div class="stat-label">Anime</div>
-</div>
-</div>
-</div>
-<div class="profile-main">
-<h2><i class="fas fa-user-cog"></i> Configuración de Perfil</h2>
-<form id="profileForm">
-<div class="form-row">
-<div class="form-group">
-<label for="profileName">Nombre</label>
-<input type="text" id="profileName" required>
-</div>
-<div class="form-group">
-<label for="profileEmail">Email</label>
-<input type="email" id="profileEmail" required>
-</div>
-</div>
-<div class="form-row">
-<div class="form-group">
-<label for="profileLanguage">Idioma</label>
-<select id="profileLanguage">
-<option value="es-ES">Español</option>
-<option value="en-US">Inglés</option>
-<option value="ja-JP">Japonés</option>
-</select>
-</div>
-<div class="form-group">
-<label for="profileRegion">Región</label>
-<select id="profileRegion">
-<option value="ES">España</option>
-<option value="MX">México</option>
-<option value="US">EE.UU.</option>
-<option value="JP">Japón</option>
-</select>
-</div>
-</div>
-<button type="submit" class="form-submit"><i class="fas fa-save"></i> Guardar Cambios</button>
-</form>
-</div>
-</div>
-</section>
-<section id="configSection" class="content-section">
-<div class="config-wrapper">
-<h1><i class="fas fa-cogs"></i> Configuración</h1>
-<div class="config-sections">
-<div class="config-card">
-<h3><i class="fas fa-eye"></i> Preferencias de Visualización</h3>
-<div class="config-options">
-<label class="config-switch">
-<input type="checkbox" id="prefMovies" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Mostrar Películas</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="prefSeries" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Mostrar Series</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="prefAnime" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Mostrar Anime</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="prefAdult">
-<span class="switch-slider"></span>
-<span class="switch-label">Contenido Adulto</span>
-</label>
-</div>
-</div>
-<div class="config-card">
-<h3><i class="fas fa-video"></i> Calidad de Reproducción</h3>
-<div class="config-options">
-<select id="configQuality" class="config-select">
-<option value="auto">Auto</option>
-<option value="1080">1080p</option>
-<option value="720">720p</option>
-<option value="480">480p</option>
-</select>
-<select id="configFontSize" class="config-select">
-<option value="small">Pequeño</option>
-<option value="medium" selected>Mediano</option>
-<option value="large">Grande</option>
-<option value="xlarge">Extra Grande</option>
-</select>
-</div>
-</div>
-<div class="config-card">
-<h3><i class="fas fa-bell"></i> Notificaciones</h3>
-<div class="config-options">
-<label class="config-switch">
-<input type="checkbox" id="notifyNew" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Nuevos Episodios</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="notifyRec" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Recomendaciones</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="notifyNews">
-<span class="switch-slider"></span>
-<span class="switch-label">Noticias</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="configSound" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Sonido</span>
-</label>
-</div>
-</div>
-<div class="config-card">
-<h3><i class="fas fa-universal-access"></i> Accesibilidad</h3>
-<div class="config-options">
-<label class="config-switch">
-<input type="checkbox" id="configReduceMotion">
-<span class="switch-slider"></span>
-<span class="switch-label">Reducir Movimiento</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="configHighContrast">
-<span class="switch-slider"></span>
-<span class="switch-label">Alto Contraste</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="configAutoplay" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Autoplay</span>
-</label>
-<label class="config-switch">
-<input type="checkbox" id="configSubtitles" checked>
-<span class="switch-slider"></span>
-<span class="switch-label">Subtítulos</span>
-</label>
-</div>
-</div>
-</div>
-<button class="config-save" id="saveConfig"><i class="fas fa-check"></i> Aplicar Configuración</button>
-</div>
-</section>
-</main>
-<div class="media-modal" id="mediaModal">
-<div class="modal-content">
-<button class="modal-close"><i class="fas fa-times"></i></button>
-<div class="modal-body" id="modalBody"></div>
-</div>
-</div>
-<div class="notification" id="globalNotification"></div>
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js')</script>
-<script src="api-tv.js"></script>
-<script src="api-anime.js"></script>
-<script src="config.js"></script>
-<script src="mode.js"></script>
-<script src="library.js"></script>
-<script src="login.js"></script>
-<script src="perfil.js"></script>
-<script src="script.js"></script>
-<script src="proxy-server.js"></script>
+    <!-- Overlay de Autenticación -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-container">
+            <div class="logo-svg">
+                <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=60&h=60&q=80" 
+                     alt="CARTEL TV Logo" 
+                     style="width: 60px; height: 60px; border-radius: 12px;">
+            </div>
+            <h1 class="auth-title">CARTEL TV</h1>
+            <input type="text" class="auth-input" id="usernameInput" placeholder="Nombre de usuario" autocomplete="username">
+            <div class="auth-error" id="usernameError">Usuario no autorizado</div>
+            <input type="password" class="auth-input" id="ticketInput" placeholder="Ticket de acceso" autocomplete="current-password">
+            <div class="auth-error" id="ticketError">Ticket incorrecto</div>
+            <button class="auth-btn" id="loginBtn"><i class="fas fa-sign-in-alt"></i> Acceder</button>
+            <div class="demo-credentials" style="margin-top: 20px; color: var(--light-gray); font-size: 0.8rem;">
+                <p>CTVP</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header Principal -->
+    <header class="header" id="mainHeader" style="display:none;" role="banner" aria-label="Cabecera principal">
+        <div class="nav-container">
+            <div class="logo">
+                <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?auto=format&fit=crop&w=32&h=32&q=80" 
+                     alt="CARTEL TV Logo" 
+                     style="width: 32px; height: 32px; border-radius: 8px;">
+                <span>CARTEL TV</span>
+            </div>
+
+            <!-- Barra de Búsqueda -->
+            <div class="search-container">
+                <div class="search-wrapper">
+                    <i class="fas fa-search search-icon" aria-hidden="true"></i>
+                    <input type="text" class="search-input" id="searchInput" 
+                           placeholder="Buscar películas, series, anime..." 
+                           aria-label="Buscar contenido">
+                </div>
+            </div>
+
+            <!-- Navegación -->
+            <nav class="nav-links" role="navigation" aria-label="Navegación principal">
+                <a href="#" class="nav-link active" data-section="home" role="tab" aria-selected="true" aria-controls="mainContent">
+                    <i class="fas fa-home" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+                <a href="#" class="nav-link" data-section="anime" role="tab" aria-selected="false" aria-controls="mainContent">
+                    <i class="fas fa-ghost" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+                <a href="#" class="nav-link" data-section="movies" role="tab" aria-selected="false" aria-controls="mainContent">
+                    <i class="fas fa-video" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+                <a href="#" class="nav-link" data-section="tv" role="tab" aria-selected="false" aria-controls="mainContent">
+                    <i class="fas fa-tv" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+                <a href="#" class="nav-link" data-section="integrated" role="tab" aria-selected="false" aria-controls="mainContent">
+                    <i class="fas fa-random" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+                <a href="#" class="nav-link" data-section="documentaries" role="tab" aria-selected="false" aria-controls="mainContent">
+                    <i class="fas fa-file-video" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+                <a href="#" class="nav-link" data-section="kids" role="tab" aria-selected="false" aria-controls="mainContent">
+                    <i class="fas fa-child" aria-hidden="true"></i>
+                    <span class="nav-text"></span>
+                </a>
+            </nav>
+
+            <!-- Menú Usuario -->
+            <div class="user-menu">
+                <div class="user-avatar" id="userAvatar" title="Mi lista de seguimiento" role="button" aria-label="Ver mi lista">
+                    <span id="avatarInitials">US</span>
+                    <div class="watchlist-counter" id="watchlistCounter" style="display: none;" aria-live="polite">0</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenido Principal -->
+    <main class="main-container" id="mainContent" style="display:none;" role="main">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1>Bienvenido, <span id="welcomeUser">Usuario</span></h1>
+                <p>Contenido actualizado en tiempo real desde TMDB, Jikan y otras APIs. Recomendaciones personalizadas basadas en tus preferencias.</p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary" id="exploreBtn">
+                        <i class="fas fa-compass" aria-hidden="true"></i> Explorar Todo
+                    </button>
+                    <button class="btn btn-secondary" id="randomBtn">
+                        <i class="fas fa-random" aria-hidden="true"></i> Recomendación Aleatoria
+                    </button>
+                    <button class="btn btn-secondary" id="watchlistBtn">
+                        <i class="fas fa-bookmark" aria-hidden="true"></i> Mi Lista
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Resultados de Búsqueda -->
+        <div id="searchResults" class="search-results" style="display: none;" role="status" aria-live="polite"></div>
+        
+        <!-- Tabs de Contenido -->
+        <div class="content-tabs" role="tablist" aria-label="Categorías de contenido">
+            <button class="tab-btn active" data-tab="trending" role="tab" aria-selected="true" aria-controls="contentGrid">
+                <i class="fas fa-fire" aria-hidden="true"></i> Tendencia
+            </button>
+            <button class="tab-btn" data-tab="top-rated" role="tab" aria-selected="false" aria-controls="contentGrid">
+                <i class="fas fa-star" aria-hidden="true"></i> Mejor Valorado
+            </button>
+            <button class="tab-btn" data-tab="upcoming" role="tab" aria-selected="false" aria-controls="contentGrid">
+                <i class="fas fa-calendar-alt" aria-hidden="true"></i> Próximamente
+            </button>
+            <button class="tab-btn" data-tab="now-playing" role="tab" aria-selected="false" aria-controls="contentGrid">
+                <i class="fas fa-play-circle" aria-hidden="true"></i> En Emisión
+            </button>
+        </div>
+        
+        <!-- Filtros -->
+        <section class="filter-section" aria-label="Filtros de contenido">
+            <div class="filter-group">
+                <label class="filter-label" for="genreFilter">Género</label>
+                <select class="filter-select" id="genreFilter" aria-label="Seleccionar género">
+                    <option value="all">Todos los géneros</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="yearFilter">Año</label>
+                <select class="filter-select" id="yearFilter" aria-label="Seleccionar año">
+                    <option value="all">Todos los años</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label" for="sortFilter">Ordenar por</label>
+                <select class="filter-select" id="sortFilter" aria-label="Ordenar contenido por">
+                    <option value="popularity.desc">Popularidad</option>
+                    <option value="vote_average.desc">Puntuación</option>
+                    <option value="release_date.desc">Más Reciente</option>
+                    <option value="release_date.asc">Más Antiguo</option>
+                    <option value="title.asc">Título A-Z</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <button class="btn btn-primary" id="applyFilters">
+                    <i class="fas fa-filter" aria-hidden="true"></i> Aplicar Filtros
+                </button>
+                <button class="btn btn-secondary" id="resetFilters" style="margin-top: 8px;">
+                    <i class="fas fa-redo" aria-hidden="true"></i> Restablecer
+                </button>
+            </div>
+        </section>
+        
+        <!-- Grid de Contenido -->
+        <section class="content-grid" id="contentGrid" role="region" aria-label="Contenido multimedia">
+            <div class="loading" style="grid-column:1/-1;text-align:center;padding:50px;" role="status" aria-live="polite">
+                <div class="loading-spinner"></div>
+                <p style="margin-top: 15px; color: var(--accent);">Cargando contenido...</p>
+            </div>
+        </section>
+        
+        <!-- Paginación -->
+        <div class="pagination" id="pagination" style="display: none; text-align: center; margin-bottom: 40px;" role="navigation" aria-label="Paginación">
+            <button class="btn btn-secondary" id="prevPage" disabled>
+                <i class="fas fa-chevron-left" aria-hidden="true"></i> Anterior
+            </button>
+            <span id="pageInfo" style="margin: 0 20px; color: var(--light);">Página 1</span>
+            <button class="btn btn-secondary" id="nextPage">
+                Siguiente <i class="fas fa-chevron-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Modal de Detalles -->
+    <div class="modal" id="detailModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-content">
+            <button class="modal-close" id="closeModal" aria-label="Cerrar modal">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+    
+    <!-- Toast Notifications -->
+    <div class="toast" id="toast" role="alert" aria-live="polite" aria-atomic="true"></div>
+    
+    <!-- Scripts -->
+    <script src="script.js"></script>
 </body>
 </html>

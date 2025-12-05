@@ -1,1 +1,60 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>CartelTV - Sin conexión</title><style>body{font-family:'Poppins',sans-serif;background:#1a1a2e;color:#ecf0f1;display:flex;justify-content:center;align-items:center;height:100vh;margin:0;text-align:center;padding:20px;}.offline-container{max-width:500px;}.offline-icon{font-size:5rem;color:#3498db;margin-bottom:2rem;}.offline-container h1{font-size:2.5rem;margin-bottom:1rem;}.offline-container p{font-size:1.1rem;margin-bottom:2rem;opacity:0.8;}.offline-actions{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;}.offline-actions button{padding:12px 24px;background:#3498db;color:white;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-weight:600;cursor:pointer;transition:all 0.3s;}.offline-actions button:hover{background:#2980b9;transform:translateY(-2px);}.offline-actions button:disabled{background:#7f8c8d;cursor:not-allowed;transform:none;}</style></head><body><div class="offline-container"><div class="offline-icon">📴</div><h1>Sin conexión</h1><p>No hay conexión a internet disponible. Algunas funciones pueden no estar disponibles.</p><div class="offline-actions"><button onclick="window.location.reload()">Reintentar</button><button onclick="window.history.back()">Volver</button><button onclick="if('serviceWorker' in navigator) navigator.serviceWorker.controller.postMessage({action:'clearCache'});">Limpiar caché</button></div></div><script>if('serviceWorker' in navigator){navigator.serviceWorker.register('service-worker.js');}</script></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CARTEL TV - Sin conexión</title>
+    <style>
+        body {
+            background: #050505;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 500px;
+        }
+        h1 {
+            color: #6a11cb;
+            margin-bottom: 20px;
+        }
+        p {
+            color: #ccc;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .btn {
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .icon {
+            font-size: 4rem;
+            color: #ff3c7f;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📺</div>
+        <h1>Sin conexión</h1>
+        <p>No tienes conexión a internet. Por favor, verifica tu conexión y vuelve a intentarlo.</p>
+        <p>Mientras tanto, puedes revisar el contenido que ya has visto o añadido a tu lista.</p>
+        <button class="btn" onclick="window.history.back()">Volver atrás</button>
+        <button class="btn" onclick="location.reload()" style="margin-left: 10px; background: #444;">Reintentar</button>
+    </div>
+</body>
+</html>
